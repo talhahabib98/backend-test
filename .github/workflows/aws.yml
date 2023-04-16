@@ -13,7 +13,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     
-    - name: Build the docker_compose
+    - name: connect to instance 
+      run: ssh
+      
+    - name: build image
       run: docker build -t backend -f Dockerfile .
       
     - name: Run the application

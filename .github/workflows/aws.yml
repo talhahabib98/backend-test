@@ -1,0 +1,47 @@
+
+name: CI/CD backend app
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+#First we will see the application build or not , then we will deploy in EC2
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Build the docker_compose
+      run: docker build -t backend -f Dockerfile .
+      
+    - name: Run the application
+      run: docker run --network=host -d backend:latest 
+
+  Deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2 
+      - name: Deploy in EC2
+        env:
+            PRIVATE_KEY: ${{ secrets.AWS_PRIVATE_KEY  }}
+            HOSTNAME : ${{ secrets.HOSTNAME  }}
+            USER_NAME : ${{ secrets.USER_NAME  }}
+            
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+          
+            #Now we have got the access of EC2 and we will start the deploy .
+            cd /home/ubuntu/backend &&
+            git checkout master &&
+            git fetch --all &&
+            git reset --hard origin/main &&
+            git pull origin main &&
+            docker build -t backend -f Dockerfile . &&
+            docker run --network=host -d backend:latest 
+            #docker-compose -f docker-compose.prod.yml up -d --build 
+          '
